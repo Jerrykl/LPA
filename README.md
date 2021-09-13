@@ -1,4 +1,4 @@
-# Parallel LPA
+# LPA
 
 A high performance parallel Label Propagation Algorithm implemented in Rust.
 
