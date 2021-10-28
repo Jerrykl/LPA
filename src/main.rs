@@ -70,7 +70,7 @@ fn main() {
 }
 
 fn load(file_path: String, delimiter: char) -> (Vec<VertexId>, Vec<Vec<VertexId>>, usize) {
-	let now = Instant::now();
+    let now = Instant::now();
 
     let (sender, receiver) = sync_channel(1024);
 
@@ -93,19 +93,21 @@ fn load(file_path: String, delimiter: char) -> (Vec<VertexId>, Vec<Vec<VertexId>
         }
     });
 
-    let mut iter = receiver.iter();
-    while let Some((src, dst)) = iter.next() {
+    for (src, dst) in receiver.iter() {
         edges[src as usize].push(dst);
         edges[dst as usize].push(src);
     }
 
-	println!("load time: {:?}s", now.elapsed().as_secs() as f64 + now.elapsed().subsec_millis() as f64 * 1e-3);
+    println!(
+        "load time: {:?}s",
+        now.elapsed().as_secs() as f64 + now.elapsed().subsec_millis() as f64 * 1e-3
+    );
 
     (vertices, edges, nedges)
 }
 
 fn store(vertices: &[VertexId], file_path: String, delimiter: char) {
-	let now = Instant::now();
+    let now = Instant::now();
 
     let mut wtr = WriterBuilder::new()
         .delimiter(delimiter as _)
@@ -116,19 +118,22 @@ fn store(vertices: &[VertexId], file_path: String, delimiter: char) {
             .unwrap();
     }
 
-	println!("store time: {:?}s", now.elapsed().as_secs() as f64 + now.elapsed().subsec_millis() as f64 * 1e-3);
+    println!(
+        "store time: {:?}s",
+        now.elapsed().as_secs() as f64 + now.elapsed().subsec_millis() as f64 * 1e-3
+    );
 }
 
 fn lpa(
     vertices: &mut Vec<VertexId>,
-    edges: &Vec<Vec<VertexId>>,
+    edges: &[Vec<VertexId>],
     nedges: usize,
     limit: i64,
 ) -> (usize, f64) {
     // naive random select function
     // let rand = || Instant::now().elapsed().as_nanos() & 1 == 1;
 
-    let (community, modularity) = statistics(vertices, &edges, nedges);
+    let (community, modularity) = statistics(vertices, edges, nedges);
     println!(
         "INIT | community: {:?} modularity: {:?}",
         community, modularity
@@ -166,17 +171,21 @@ fn lpa(
                         label_counts.insert(nbr_label as _, 1);
                         1
                     };
-                    if count > max_count {
-                        max_count = count;
-                        new_label = nbr_label;
-                        counter = 1;
-                    } else if count == max_count {
-                        // reservoir sampling
-                        if rng.gen_ratio(1, counter + 1) {
-                            new_label = nbr_label;
+                    match count.cmp(&max_count) {
+                        std::cmp::Ordering::Less => (),
+                        std::cmp::Ordering::Equal => {
+                            // reservoir sampling
+                            if rng.gen_ratio(1, counter + 1) {
+                                new_label = nbr_label;
+                            }
+                            counter += 1;
                         }
-                        counter += 1;
-                    }
+                        std::cmp::Ordering::Greater => {
+                            max_count = count;
+                            new_label = nbr_label;
+                            counter = 1;
+                        }
+                    };
                     // if count > max_count || (count == max_count && rand()) {
                     //     max_count = count;
                     //     new_label = nbr_label;
@@ -191,9 +200,9 @@ fn lpa(
         let new_vertices = atomic_vertices
             .par_iter()
             .map(|x| x.load(Ordering::Relaxed) as VertexId)
-            .collect();
+            .collect::<Vec<_>>();
 
-        let (community, modularity) = statistics(&new_vertices, &edges, nedges);
+        let (community, modularity) = statistics(&new_vertices, edges, nedges);
 
         if modularity > best_modularity {
             *vertices = new_vertices;
@@ -215,7 +224,7 @@ fn lpa(
     (best_community, best_modularity)
 }
 
-fn statistics(vertices: &Vec<VertexId>, edges: &Vec<Vec<VertexId>>, nedges: usize) -> (usize, f64) {
+fn statistics(vertices: &[VertexId], edges: &[Vec<VertexId>], nedges: usize) -> (usize, f64) {
     let mut communities = vec![HashSet::new(); vertices.len()];
     let mut communities_count = HashSet::new();
 
@@ -227,7 +236,7 @@ fn statistics(vertices: &Vec<VertexId>, edges: &Vec<Vec<VertexId>>, nedges: usiz
     let modularity = communities
         .par_iter()
         .map(|community| {
-            if community.len() == 0 {
+            if community.is_empty() {
                 return 0.0;
             }
             let mut lv = 0;

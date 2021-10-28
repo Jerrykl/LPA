@@ -9,6 +9,8 @@ A high performance parallel Label Propagation Algorithm implemented in Rust.
 3. Repeat step 2 until the termination conditions are met.
 
 **Modularity** is a commonly used index to measure the quality of community partition. The modularity is calculated by the following equation.
+
+![modularity](https://latex.codecogs.com/gif.download?Q%3D%5Csum_%7Bv%3D1%7D%5E%7Bk%7D%5B%5Cfrac%7Bl_v%7D%7BM%7D-%28%5Cfrac%7Bd_v%7D%7B2M%7D%29%5E2%5D)
 $$
 Q=\sum_{v=1}^{k}[\frac{l_v}{M}-(\frac{d_v}{2M})^2]
 $$
