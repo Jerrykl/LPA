@@ -55,3 +55,6 @@ An example input graph is as follow.
 0 2
 1 3
 ```
+
+## Reference
+https://github.com/wmjtxt/LPA
